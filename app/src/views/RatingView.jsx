@@ -20,7 +20,6 @@ export function RatingView({ data, openChart }) {
   const p = data.player || {};
   const [frame, setFrame] = useState('new');
   const delta = p.rating != null ? Math.round((p.rating - comp.total) * 1000) / 1000 : null;
-  const total = comp.part.new + comp.part.best + comp.part.platinum;
   const inFrames = [...comp.frames.new, ...comp.frames.best, ...comp.frames.platinum];
   const uniq = (l) => [...new Map(l.map((c) => [c.uid, c])).values()];
   const calc = uniq(inFrames.filter((c) => c.constInferred));
@@ -45,7 +44,6 @@ export function RatingView({ data, openChart }) {
               <button key={k} type="button" className={`og-frame og-frame-${k} ${frame === k ? 'is-active' : ''}`} onClick={() => setFrame(k)}>
                 <span className="og-frame-name">{f.name}<small>{f.count}譜面</small></span>
                 <span className="og-frame-val og-num">+{f3(comp.part[k])}</span>
-                <span className="og-frame-meter"><i style={{ width: `${total ? (comp.part[k] / total) * 100 : 0}%` }} /></span>
                 <span className="og-frame-sub og-num">平均 {f3(comp.avg[k])} ・ 最低 {f3(comp.border[k])}</span>
               </button>
             ))}

@@ -3,6 +3,7 @@ import R from './rating.js';
 
 export const STORE_KEY = 'ongekiViewer.v1';
 const JACKET_KEY = 'ongekiViewer.jackets.v1';
+const CARD_KEY = 'ongekiViewer.cardDetails.v1';
 export const DIFFS = ['BASIC', 'ADVANCED', 'EXPERT', 'MASTER', 'LUNATIC'];
 export const keyOf = (c) => c.diff + ':' + c.title;
 export const playKey = (p) => [p.date, p.diff, p.title, p.techScore, p.battleScore].join('|');
@@ -10,6 +11,7 @@ export const playKey = (p) => [p.date, p.diff, p.title, p.techScore, p.battleSco
 const empty = () => ({ latest: null, ratings: [], pb: [], plays: [], overrides: {} });
 let S = empty();
 let J = {}; // ジャケット画像 { ファイル名: dataURL }
+let CD = {}; // カードの性能 { カード画像のファイル名: 詳細 }
 let memoryOnly = false;
 let version = 0;
 const listeners = new Set();
@@ -18,7 +20,13 @@ export function load() {
   try { const raw = localStorage.getItem(STORE_KEY); if (raw) S = Object.assign(empty(), JSON.parse(raw)); }
   catch (e) { memoryOnly = true; }
   try { const raw = localStorage.getItem(JACKET_KEY); if (raw) J = JSON.parse(raw) || {}; } catch (e) { /* 画像なしでも動く */ }
+  try { const raw = localStorage.getItem(CARD_KEY); if (raw) CD = JSON.parse(raw) || {}; } catch (e) { /* 性能なしでも動く */ }
 }
+function saveCardDetails() { try { localStorage.setItem(CARD_KEY, JSON.stringify(CD)); } catch (e) { /* 容量不足なら保存しない */ } }
+export const getCardDetails = () => CD;
+// カードの識別子（カード画像のファイル名）。古い取り込みのカードには id が無いので画像URLから作る
+export const cardId = (c) => c.id || (c.imageUrl ? String(c.imageUrl).split('/').pop() : null);
+export function setCardDetailBulk(v) { S.cardDetailBulk = !!v; save(); }
 function saveJackets() { try { localStorage.setItem(JACKET_KEY, JSON.stringify(J)); } catch (e) { /* 容量不足なら保存しない */ } }
 export const getJackets = () => J;
 export const jacketName = (s) => (s && s.jacketUrl ? String(s.jacketUrl).split('/').pop() : null);
@@ -33,6 +41,10 @@ export const getState = () => S;
 export const getVersion = () => version;
 export const isMemoryOnly = () => memoryOnly;
 export const subscribe = (f) => { listeners.add(f); return () => listeners.delete(f); };
+
+// ---------- プレイヤーレベル ----------
+// NETの表示は「転生回数」と「その周のレベル」。転生1回 = 100レベルなので、通算レベルは 転生回数×100 + 表示レベル
+export const totalLevel = (p) => (p && p.level != null ? (p.reincarnation || 0) * 100 + p.level : null);
 
 // ---------- 日付 ----------
 export const parseDate = (s) => {
@@ -144,7 +156,8 @@ export function ingest(data) {
   // カードを読まなかった回（前回の取得から日が浅いとき）は、前回のカードを引き継ぐ
   const cards = data.cards || (prev && prev.cards) || [];
   const cardsFetchedAt = data.cards ? at : (prev && (prev.cardsFetchedAt || prev.fetchedAt)) || null;
-  if (data.cards) S.forceCards = false;
+  if (data.cards) { S.forceCards = false; S.cardDetailBulk = false; }
+  if (data.cardDetails && Object.keys(data.cardDetails).length) { CD = { ...CD, ...data.cardDetails }; saveCardDetails(); }
   S.latest = Object.assign({}, rest, { scores: data.scores.filter((s) => s.played), chartCount: data.scores.length, cards, cardsFetchedAt });
   save();
   return { newPlays: newPlays.length, events: events.length };
@@ -156,14 +169,15 @@ export function importAny(input) {
   if (data && data.format === 'ongeki-viewer-backup/1') {
     S = Object.assign(empty(), data.state);
     if (data.jackets) { J = data.jackets; saveJackets(); }
+    if (data.cardDetails) { CD = data.cardDetails; saveCardDetails(); }
     save();
     return '保存データをバックアップから復元しました';
   }
   const r = ingest(data);
   return `取り込みました（新しいプレイ ${r.newPlays}件・更新 ${r.events}件）`;
 }
-export const backupJson = () => JSON.stringify({ format: 'ongeki-viewer-backup/1', savedAt: new Date().toISOString(), state: S, jackets: J });
-export function clearAll() { S = empty(); J = {}; try { localStorage.removeItem(STORE_KEY); localStorage.removeItem(JACKET_KEY); } catch (e) { /* noop */ } version++; listeners.forEach((f) => f()); }
+export const backupJson = () => JSON.stringify({ format: 'ongeki-viewer-backup/1', savedAt: new Date().toISOString(), state: S, jackets: J, cardDetails: CD });
+export function clearAll() { S = empty(); J = {}; CD = {}; try { localStorage.removeItem(STORE_KEY); localStorage.removeItem(JACKET_KEY); localStorage.removeItem(CARD_KEY); } catch (e) { /* noop */ } version++; listeners.forEach((f) => f()); }
 export function setForceCards(v) { S.forceCards = !!v; save(); }
 export function setOverride(uid, v) { if (v == null) delete S.overrides[uid]; else S.overrides[uid] = v; save(); }
 
@@ -202,7 +216,7 @@ export function sampleData() {
     player: { name: 'サンプルプレイヤー', level: 42, reincarnation: 3, trophy: 'サンプル称号', rating: comp.total, ratingMax: comp.total, battlePoint: 15230, totalTracks: 3120, money: '52,400（累計 1,204,880）', comment: 'これは表示例です。', activity: [] },
     ratingTarget: {}, scores, playlog,
     cards: [
-      { name: '【SSR】星咲 あかり[サンプル]', rarity: 'SSR', attribute: 'fire', kaika: true, stars: 5 },
+      { name: '【SSR】星咲 あかり[サンプル]', rarity: 'SSR', attribute: 'fire', kaika: true, chokaika: true, stars: 5, sampleDetail: { level: 70, maxLevel: 70, attack: 338, maxAttack: 338, printable: 6, version: 'Re:Fresh Act.1', skillType: 'attack', skillName: 'ボスアタック +16（追撃 +3）', skillDesc: 'バトル後半で、自身の攻撃力16％アップ\n対戦相手ライフ0％時、さらに攻撃力3％アップ', obtain: 'サンプルの入手方法' } },
       { name: '【SSR】藤沢 柚子[サンプル]', rarity: 'SSR', attribute: 'leaf', kaika: false, stars: 3 },
       { name: '【SR】三角 葵[サンプル]', rarity: 'SR', attribute: 'aqua', kaika: true, stars: 2 },
       { name: '【R】高瀬 梨緒[サンプル]', rarity: 'R', attribute: 'aqua', kaika: false, stars: 1 },

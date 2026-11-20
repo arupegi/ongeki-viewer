@@ -3,7 +3,7 @@ import { Heading } from '@astryxdesign/core/Heading';
 import { Text } from '@astryxdesign/core/Text';
 import { Avatar } from '@astryxdesign/core/Avatar';
 import { fmt, f3, Diff, LineChart, Muted } from '../ui.jsx';
-import { fmtDate } from '../store.js';
+import { fmtDate, totalLevel } from '../store.js';
 
 export function ProfileView({ data, S }) {
   const p = data.player || {};
@@ -12,7 +12,7 @@ export function ProfileView({ data, S }) {
   const money = String(p.money || '');
   const stats = [
     ['レーティング', f3(p.rating), `MAX ${f3(p.ratingMax)}`],
-    ['レベル', fmt(p.level), p.reincarnation ? `転生 ${p.reincarnation}回` : ''],
+    ['レベル', fmt(totalLevel(p)), p.reincarnation ? `転生${p.reincarnation}回 ＋ Lv.${p.level}` : ''],
     ['バトルポイント', fmt(p.battlePoint), ''],
     ['プレイTRACK数', fmt(p.totalTracks), ''],
     ['所持マニー', money.replace(/（.*$/, '') || '—', (money.match(/（(.*)）/) || [])[1] || ''],

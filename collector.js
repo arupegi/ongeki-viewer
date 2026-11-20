@@ -15,6 +15,8 @@
   const INTERVAL = 450; // ページを読み始める間隔(ms)
   const IMAGE_INTERVAL = 250; // ジャケット画像を読み始める間隔(ms)
   const CARD_REFRESH_DAYS = 7; // カード一覧を読み直す間隔
+  const CARD_DETAIL_LIMIT = 30; // カード一覧を読んだ回に、性能（詳細ページ）を読む枚数
+  const CARD_DETAIL_BULK = 200; // 「まとめて取得」をオンにした回の枚数
   const DIFFS = [
     { id: 0, key: 'bas', name: 'BASIC' },
     { id: 1, key: 'adv', name: 'ADVANCED' },
@@ -305,17 +307,74 @@
         if (!cardImg) return;
         const icons = [...b.querySelectorAll('img')].map(imgName);
         const name = txt(b.querySelector('.break'));
+        const chokaika = icons.includes('card_icon_chokaika.png'); // 超開花（このときは開花の印が付かない）
         cards.push({
           name,
           rarity: (icons.find((n) => /^card_icon_(n|r|sr|ssr|sr_plus|srp|r_plus)\.png$/.test(n)) || '').replace(/^card_icon_|\.png$/g, '').toUpperCase() || (name.match(/^【(.+?)】/) || [])[1] || '',
           attribute: (icons.find((n) => /^card_icon_(fire|aqua|leaf)\.png$/.test(n)) || '').replace(/^card_icon_|\.png$/g, ''),
-          kaika: icons.includes('card_icon_kaika.png'),
+          kaika: chokaika || icons.includes('card_icon_kaika.png'),
+          chokaika,
           stars: icons.filter((n) => n === 'card_icon_star_on.png').length,
           imageUrl: abs(cardImg.getAttribute('src')),
+          id: imgName(cardImg), // カード画像のファイル名を、取り込みをまたいだ識別子にする
+          idx: (b.querySelector('input[name=idx]') || {}).value || null, // 詳細ページ用（セッションごとに変わる）
         });
       });
     }
     return cards;
+  }
+
+  // ---------- カードの性能（詳細ページ） ----------
+  async function fetchCardDetail(idx) {
+    const d = await get(`/card/cardDetail/?idx=${encodeURIComponent(idx)}`);
+    const det = {};
+    const lv = d.querySelectorAll('.card_lv_block span');
+    if (lv.length >= 2) { det.level = num(txt(lv[0])); det.maxLevel = num(txt(lv[1])); }
+    d.querySelectorAll('.card_detail_param_block tr').forEach((tr) => {
+      const tds = tr.querySelectorAll('td');
+      if (tds.length < 2) return;
+      const k = txt(tds[0]);
+      if (k === '攻撃力') { const m = txt(tds[1]).match(/(\d+)\s*\/\s*(\d+)/); if (m) { det.attack = Number(m[1]); det.maxAttack = Number(m[2]); } }
+      else if (k === '印刷可能回数') det.printable = num(txt(tds[1]));
+      else if (k === 'ver.') det.version = txt(tds[1]);
+    });
+    const sk = d.querySelector('.card_skill_table');
+    if (sk) {
+      const rows = sk.querySelectorAll('tr');
+      const icon = sk.querySelector('img');
+      det.skillType = icon ? imgName(icon).replace(/^skill_|\.png.*$/g, '').trim() : null;
+      det.skillName = txt(rows[0] && rows[0].querySelectorAll('td')[1]);
+      const descTd = rows[1] && rows[1].querySelector('td');
+      det.skillDesc = descTd ? descTd.innerHTML.split(/<br\s*\/?>/i).map((t) => t.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()).filter(Boolean).join('\n') : '';
+    }
+    det.obtain = txt(d.querySelector('.card_detail_other_item')) || null;
+    return det;
+  }
+  // known: ビューアが持っている性能 { id: { level, maxLevel, stars, kaika, chokaika, at } }
+  // 優先度: 未取得 → 開花・☆が変わった → レベルが上限でない（古い順）
+  async function fetchCardDetails(cards, known, limit) {
+    const stateOf = (c) => `${c.stars}|${c.kaika ? 1 : 0}|${c.chokaika ? 1 : 0}`;
+    const missing = [], changed = [], growing = [];
+    cards.forEach((c) => {
+      if (!c.idx || !c.id) return;
+      const k = known[c.id];
+      if (!k) missing.push(c);
+      else if (stateOf(k) !== stateOf(c)) changed.push(c);
+      else if (k.level != null && k.maxLevel != null && k.level < k.maxLevel) growing.push(c);
+    });
+    growing.sort((a, b) => String(known[a.id].at || '').localeCompare(String(known[b.id].at || '')));
+    const todo = [...missing, ...changed, ...growing].slice(0, limit);
+    const out = {};
+    let done = 0;
+    if (!todo.length) return out;
+    log(`カード性能: 0/${todo.length}（未取得 ${missing.length}枚）`, 'carddetail');
+    const at = new Date().toISOString();
+    await pool(todo, CONCURRENCY, async (c) => {
+      try { out[c.id] = { ...(await fetchCardDetail(c.idx)), stars: c.stars, kaika: c.kaika, chokaika: c.chokaika, at }; }
+      catch (e) { if (/制限/.test(e.message)) throw e; console.warn(e); }
+      log(`カード性能: ${++done}/${todo.length}（未取得 ${missing.length}枚）`, 'carddetail');
+    });
+    return out;
   }
 
   // ---------- 譜面定数（otoge-db） ----------
@@ -420,7 +479,7 @@
     const e = await wait;
     if (!e || !VIEWER_ORIGINS.includes(e.origin)) return null;
     const k = e.data.known || {};
-    return { win: op, knownPlays: new Set(k.plays || []), knownJackets: new Set(k.jackets || []), cardsFetchedAt: k.cardsFetchedAt || null, forceCards: !!k.forceCards };
+    return { win: op, knownPlays: new Set(k.plays || []), knownJackets: new Set(k.jackets || []), cardsFetchedAt: k.cardsFetchedAt || null, forceCards: !!k.forceCards, cardDetails: k.cardDetails || {}, cardDetailBulk: !!k.cardDetailBulk };
   }
   async function sendToViewer(viewer, data) {
     const wait = waitMessage(viewer, 'ongeki-viewer-received', 15000);
@@ -442,15 +501,20 @@
     // カード一覧はめったに変わらないので、ビューアが CARD_REFRESH_DAYS 日以内に取得済みなら読まない
     const cardsP = viewerP.then((v) => {
       const age = v && v.cardsFetchedAt ? (Date.now() - Date.parse(v.cardsFetchedAt)) / 86400000 : Infinity;
-      if (v && !v.forceCards && age < CARD_REFRESH_DAYS) { log(`カード: ${Math.floor(age)}日前に取得済みのため省略`, 'card'); return null; }
-      return fetchCards();
+      if (v && !v.forceCards && !v.cardDetailBulk && age < CARD_REFRESH_DAYS) { log(`カード: ${Math.floor(age)}日前に取得済みのため省略`, 'card'); return { cards: null, cardDetails: {} }; }
+      return fetchCards().then(async (cards) => {
+        // 性能はビューアに覚えてもらう前提なので、ビューアから開いたときだけ読む
+        const cardDetails = v ? await fetchCardDetails(cards, v.cardDetails, v.cardDetailBulk ? CARD_DETAIL_BULK : CARD_DETAIL_LIMIT) : {};
+        cards.forEach((c) => { delete c.idx; });
+        return { cards, cardDetails };
+      });
     });
-    const [player, ratingTarget, scores, playlog, cards, viewerInfo] = await Promise.all([
+    const [player, ratingTarget, scores, playlog, { cards, cardDetails }, viewerInfo] = await Promise.all([
       fetchPlayer(), fetchRatingTarget(), fetchScores(), playlogP, cardsP, viewerP,
     ]);
     const constInfo = await attachConstants(scores, ratingTarget, dbP);
     const { jackets, jacketNames } = await fetchJackets(scores, ratingTarget, viewerInfo ? viewerInfo.knownJackets : new Set());
-    const data = { format: 'ongeki-viewer/1', fetchedAt: new Date().toISOString(), player, ratingTarget, scores, playlog, cards, constInfo, jackets, jacketNames };
+    const data = { format: 'ongeki-viewer/1', fetchedAt: new Date().toISOString(), player, ratingTarget, scores, playlog, cards, cardDetails, constInfo, jackets, jacketNames };
     window.__ongekiData = data;
     const sec = ((Date.now() - t0) / 1000).toFixed(1);
     if (window.__ongekiNoDownload) { box.textContent = `取得完了（テストモード・${sec}秒）`; return; }

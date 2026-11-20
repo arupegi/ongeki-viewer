@@ -1,5 +1,5 @@
 // レート枠を1枚の画像に描く（Canvas）
-import { fmtDate } from './store.js';
+import { fmtDate, totalLevel } from './store.js';
 
 const THEMES = {
   dark: {
@@ -106,7 +106,7 @@ export async function drawFrameImage(data, opts) {
   ctx.fillStyle = T.text; ctx.font = `700 34px ${JP}`;
   ctx.fillText(fitText(ctx, p.name || '', W / 2 - 80), PAD + 32, 106);
   ctx.fillStyle = T.muted; ctx.font = `500 15px ${JP}`;
-  const sub = [p.level != null ? `Lv.${p.level}` : '', p.trophy || '', `取得 ${fmtDate(Date.parse(data.fetchedAt))}`].filter(Boolean).join('  ・  ');
+  const sub = [p.level != null ? `Lv.${totalLevel(p)}` : '', p.trophy || '', `取得 ${fmtDate(Date.parse(data.fetchedAt))}`].filter(Boolean).join('  ・  ');
   ctx.fillText(fitText(ctx, sub, W / 2 - 80), PAD + 32, 134);
 
   const rx = W - PAD - 32;

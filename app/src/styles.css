@@ -99,8 +99,6 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .og-frame-name { font-weight: 700; font-size: 13px; display: flex; gap: 6px; align-items: baseline; }
 .og-frame-name small { font-weight: 500; color: var(--color-text-secondary); }
 .og-frame-val { font-weight: 700; font-size: 26px; line-height: 1.1; color: var(--c); }
-.og-frame-meter { height: 4px; border-radius: 2px; background: var(--color-background-muted); overflow: hidden; }
-.og-frame-meter i { display: block; height: 100%; background: var(--c); }
 .og-frame-sub { font-size: 11px; color: var(--color-text-secondary); }
 .og-formula { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; font-size: 13px; line-height: 1.7; }
 .og-formula p { margin: 0; }
@@ -202,7 +200,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   .og-hero { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .og-hero-frames { grid-template-columns: minmax(0, 1fr); }
   .og-frame { display: grid; grid-template-columns: 1fr auto; align-items: center; }
-  .og-frame-meter, .og-frame-sub { grid-column: 1 / -1; }
+  .og-frame-sub { grid-column: 1 / -1; }
   .og-big { font-size: 44px; }
   .og-jgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .og-ev { grid-template-columns: minmax(0, 1fr); gap: 2px; }
@@ -213,3 +211,27 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 /* 画像ジェネレータ */
 .og-image-preview { border: 1px solid var(--color-border); border-radius: 12px; overflow: auto; background: var(--color-background-muted); max-height: 80vh; }
 .og-image-preview img { display: block; width: 100%; height: auto; max-width: 100%; }
+
+/* カードの性能・超開花 */
+.og-card { font: inherit; color: inherit; text-align: start; cursor: pointer; padding: 0; }
+.og-card:hover { border-color: var(--og-pink); }
+.og-card:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.og-bloom { position: absolute; left: 6px; top: 6px; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; color: #fff; }
+.og-bloom-cho { background: linear-gradient(90deg, #ff5f8f, #ffb84d, #5fd38a, #4fb3ff, #a77bff); text-shadow: 0 1px 2px rgba(0,0,0,.45); }
+.og-chokaika { background: var(--og-rainbow); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.og-card-perf { display: flex; gap: 10px; font-size: 12px; color: var(--color-text-secondary); }
+.og-card-perf b { color: var(--color-text-primary); font-size: 14px; }
+.og-card-perf small { font-size: 10px; }
+.og-card-skill { font-size: 11px; color: var(--color-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.og-card-sync { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; padding: 12px 14px; border-radius: 10px; background: var(--color-background-muted); font-size: 13px; }
+.og-card-detail { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 16px; align-items: start; }
+.og-card-detail .og-card-img { border-radius: 8px; overflow: hidden; }
+.og-card-detail-main { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.og-bloom-tag { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--color-background-muted); color: var(--og-pink); }
+.og-bloom-tag-cho { background: var(--og-rainbow); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.4); }
+.og-skill-box { border: 1px solid var(--color-border); border-radius: 10px; padding: 12px 14px; }
+.og-skill-type { font-family: var(--og-num); font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 4px; color: #fff; background: var(--og-mas); }
+.og-skill-attack { background: var(--og-exc); } .og-skill-boost { background: var(--og-adv); } .og-skill-guard { background: var(--og-blue); } .og-skill-assist { background: var(--og-bas); }
+.og-skill-desc { white-space: pre-line; font-size: 13px; line-height: 1.7; color: var(--color-text-secondary); margin-top: 6px; }
+.og-card-extra { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+@media (max-width: 560px) { .og-card-detail { grid-template-columns: 110px minmax(0, 1fr); } }

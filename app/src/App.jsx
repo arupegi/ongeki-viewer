@@ -43,6 +43,9 @@ export function App() {
           jackets: Object.keys(store.getJackets()),
           cardsFetchedAt: st.latest ? st.latest.cardsFetchedAt || st.latest.fetchedAt : null,
           forceCards: !!st.forceCards,
+          cardDetailBulk: !!st.cardDetailBulk,
+          // 取得済みのカード性能（どのカードを読み直すかの判断用）
+          cardDetails: Object.fromEntries(Object.entries(store.getCardDetails()).map(([id, d]) => [id, { level: d.level, maxLevel: d.maxLevel, stars: d.stars, kaika: d.kaika, chokaika: d.chokaika, at: d.at }])),
         };
         e.source.postMessage({ type: 'ongeki-viewer-pong', known }, NET_ORIGIN);
         return;
