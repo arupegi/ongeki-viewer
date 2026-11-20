@@ -26,7 +26,6 @@ function saveCardDetails() { try { localStorage.setItem(CARD_KEY, JSON.stringify
 export const getCardDetails = () => CD;
 // カードの識別子（カード画像のファイル名）。古い取り込みのカードには id が無いので画像URLから作る
 export const cardId = (c) => c.id || (c.imageUrl ? String(c.imageUrl).split('/').pop() : null);
-export function setCardDetailBulk(v) { S.cardDetailBulk = !!v; save(); }
 function saveJackets() { try { localStorage.setItem(JACKET_KEY, JSON.stringify(J)); } catch (e) { /* 容量不足なら保存しない */ } }
 export const getJackets = () => J;
 export const jacketName = (s) => (s && s.jacketUrl ? String(s.jacketUrl).split('/').pop() : null);
@@ -162,7 +161,7 @@ export function ingest(input) {
   // カードを読まなかった回（前回の取得から日が浅いとき）は、前回のカードを引き継ぐ
   const cards = data.cards || (prev && prev.cards) || [];
   const cardsFetchedAt = data.cards ? at : (prev && (prev.cardsFetchedAt || prev.fetchedAt)) || null;
-  if (data.cards) { S.forceCards = false; if (!data.cardDetailStopped) S.cardDetailBulk = false; }
+  if (data.cards) S.forceCards = false;
   if (data.cardDetails && Object.keys(data.cardDetails).length) { CD = { ...CD, ...data.cardDetails }; saveCardDetails(); }
   S.latest = Object.assign({}, rest, { scores: data.scores.filter((s) => s.played), chartCount: data.chartCount || data.scores.length, cards, cardsFetchedAt });
   save();

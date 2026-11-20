@@ -15,8 +15,6 @@
   const INTERVAL = 350; // ページを読み始める間隔(ms)。以前の安定していた版（350ms待ってから1本ずつ）と同程度
   const IMAGE_INTERVAL = 250; // ジャケット画像を読み始める間隔(ms)
   const CARD_REFRESH_DAYS = 7; // カード一覧を読み直す間隔
-  const CARD_DETAIL_LIMIT = 30; // カード一覧を読んだ回に、性能（詳細ページ）を読む枚数
-  const CARD_DETAIL_BULK = 200; // 「まとめて取得」をオンにした回の枚数
   const DIFFS = [
     { id: 0, key: 'bas', name: 'BASIC' },
     { id: 1, key: 'adv', name: 'ADVANCED' },
@@ -353,25 +351,21 @@
     det.obtain = txt(d.querySelector('.card_detail_other_item')) || null;
     return det;
   }
-  // known: ビューアが持っている性能 { id: { level, maxLevel, stars, kaika, chokaika, at } }
-  // 優先度: 未取得 → 開花・☆が変わった → レベルが上限でない（古い順）
-  async function fetchCardDetails(cards, known, limit) {
-    const stateOf = (c) => `${c.stars}|${c.kaika ? 1 : 0}|${c.chokaika ? 1 : 0}`;
-    const missing = [], changed = [], growing = [];
+  // known: ビューアが持っている性能 { id: {...} }
+  // 性能はビューアが取得済みのカードは読まず、未取得のカードはすべて読む
+  async function fetchCardDetails(cards, known) {
+    const missing = [];
     cards.forEach((c) => {
       if (!c.idx || !c.id) return;
       const k = known[c.id];
       if (!k) missing.push(c);
-      else if (stateOf(k) !== stateOf(c)) changed.push(c);
-      else if (k.level != null && k.maxLevel != null && k.level < k.maxLevel) growing.push(c);
     });
-    growing.sort((a, b) => String(known[a.id].at || '').localeCompare(String(known[b.id].at || '')));
-    const todo = [...missing, ...changed, ...growing].slice(0, limit);
+    const todo = missing;
     const out = {};
     let done = 0;
     let stopped = false;
     if (!todo.length) return out;
-    log(`カード性能: 0/${todo.length}（未取得 ${missing.length}枚）`, 'carddetail');
+    log(`カード性能: 0/${todo.length}（取得済み ${cards.length - todo.length}枚は省略）`, 'carddetail');
     const at = new Date().toISOString();
     await pool(todo, CONCURRENCY, async (c) => {
       if (stopped) return;
@@ -380,7 +374,7 @@
         if (/制限/.test(e.message)) { stopped = true; cardDetailStopped = true; log(`カード性能: アクセス制限のため ${done}枚で中断（読めた分は取り込みます）`, 'carddetail'); return; }
         console.warn(e);
       }
-      log(`カード性能: ${++done}/${todo.length}（未取得 ${missing.length}枚）`, 'carddetail');
+      log(`カード性能: ${++done}/${todo.length}（取得済み ${cards.length - todo.length}枚は省略）`, 'carddetail');
     });
     return out;
   }
@@ -489,7 +483,7 @@
     const e = await wait;
     if (!e || !VIEWER_ORIGINS.includes(e.origin)) return null;
     const k = e.data.known || {};
-    return { win: op, knownPlays: new Set(k.plays || []), knownJackets: new Set(k.jackets || []), allPlays: new Set(k.allPlays || []), hasScores: !!k.hasScores, cardsFetchedAt: k.cardsFetchedAt || null, forceCards: !!k.forceCards, cardDetails: k.cardDetails || {}, cardDetailBulk: !!k.cardDetailBulk };
+    return { win: op, knownPlays: new Set(k.plays || []), knownJackets: new Set(k.jackets || []), allPlays: new Set(k.allPlays || []), hasScores: !!k.hasScores, cardsFetchedAt: k.cardsFetchedAt || null, forceCards: !!k.forceCards, cardDetails: k.cardDetails || {}, cardDetailsMissing: k.cardDetailsMissing == null ? true : !!k.cardDetailsMissing };
   }
   async function sendToViewer(viewer, data) {
     const wait = waitMessage(viewer, 'ongeki-viewer-received', 15000);
@@ -525,10 +519,11 @@
     // カード一覧はめったに変わらないので、ビューアが CARD_REFRESH_DAYS 日以内に取得済みなら読まない
     const cardsP = viewerP.then((v) => {
       const age = v && v.cardsFetchedAt ? (Date.now() - Date.parse(v.cardsFetchedAt)) / 86400000 : Infinity;
-      if (v && !v.forceCards && !v.cardDetailBulk && age < CARD_REFRESH_DAYS) { log(`カード: ${Math.floor(age)}日前に取得済みのため省略`, 'card'); return { cards: null, cardDetails: {} }; }
+      // 性能が未取得のカードが残っているときは、7日以内でも一覧を読む（詳細ページの idx は一覧からしか取れないため）
+      if (v && !v.forceCards && !v.cardDetailsMissing && age < CARD_REFRESH_DAYS) { log(`カード: ${Math.floor(age)}日前に取得済みのため省略`, 'card'); return { cards: null, cardDetails: {} }; }
       return fetchCards().then(async (cards) => {
         // 性能はビューアに覚えてもらう前提なので、ビューアから開いたときだけ読む
-        const cardDetails = v ? await fetchCardDetails(cards, v.cardDetails, v.cardDetailBulk ? CARD_DETAIL_BULK : CARD_DETAIL_LIMIT) : {};
+        const cardDetails = v ? await fetchCardDetails(cards, v.cardDetails) : {};
         cards.forEach((c) => { delete c.idx; });
         return { cards, cardDetails };
       });

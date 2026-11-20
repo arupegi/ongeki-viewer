@@ -46,7 +46,8 @@ export function App() {
           jackets: Object.keys(store.getJackets()),
           cardsFetchedAt: st.latest ? st.latest.cardsFetchedAt || st.latest.fetchedAt : null,
           forceCards: !!st.forceCards,
-          cardDetailBulk: !!st.cardDetailBulk,
+          // 性能が未取得のカードが残っているか（残っていれば、ブックマークレットはカード一覧を読んで未取得分をすべて読む）
+          cardDetailsMissing: !(st.latest && st.latest.cards && st.latest.cards.length) || st.latest.cards.some((c) => !store.getCardDetails()[store.cardId(c)]),
           // 取得済みのカード性能（どのカードを読み直すかの判断用）
           cardDetails: Object.fromEntries(Object.entries(store.getCardDetails()).map(([id, d]) => [id, { level: d.level, maxLevel: d.maxLevel, stars: d.stars, kaika: d.kaika, chokaika: d.chokaika, at: d.at }])),
         };

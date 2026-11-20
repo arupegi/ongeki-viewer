@@ -50,10 +50,9 @@ export function CardsView({ data, S }) {
             <span>性能を取得済み <b className="og-num">{fmt(withDetail)}</b> / {fmt(cards.length)}枚</span>
             <Muted>カード一覧の最終取得 {data.cardsFetchedAt ? fmtDate(Date.parse(data.cardsFetchedAt)) : '—'}</Muted>
           </div>
-          <Muted>カードの性能は詳細ページを1枚ずつ読むため、オンゲキNETへの負担を抑えて少しずつ集めます。カード一覧は7日に1回読み直し、そのときに30枚ずつ性能を読みます（未取得 → 開花や☆が変わったカード → レベルが上限でないカードの順）。</Muted>
+          <Muted>カードの性能は、まだ取得していないカードだけを、次の取り込みでまとめて読みます（取得済みのカードは読み直しません）。カード一覧は7日に1回読み直し、新しいカードがあればその性能も読みます。</Muted>
           <div className="og-row">
             <Switch label="次回の取り込みでカードを読み直す" size="sm" value={!!S.forceCards} onChange={(v) => store.setForceCards(v)} />
-            <Switch label="次回は性能を200枚まとめて読む（1分半ほど長くなる）" size="sm" value={!!S.cardDetailBulk} onChange={(v) => store.setCardDetailBulk(v)} />
           </div>
         </div>
       )}
