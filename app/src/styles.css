@@ -1,0 +1,215 @@
+/* オンゲキ固有の見た目（難易度色・ランプ・数値）。それ以外は Astryx のトークンに合わせる */
+:root {
+  --og-bas: #2f9f5e; --og-adv: #d08a10; --og-exc: #d63b55; --og-mas: #8a43cf; --og-lnt: #2b2838; --og-lnt-ink: #ffffff;
+  --og-gold: #a67c0e; --og-pink: #d1307c; --og-blue: #1f78c0; --og-green: #1d8a52; --og-orange: #b8650a; --og-red: #c4384a;
+  --og-rainbow: linear-gradient(90deg, #ff5f8f, #ffb84d, #5fd38a, #4fb3ff, #a77bff);
+  /* 判定色（本家: CRITICAL BREAK 黄 / BREAK 橙 / HIT 水色 / MISS 灰） */
+  --og-j-cb: #b89a00; --og-j-br: #d9761c; --og-j-hit: #0e9fb5; --og-j-miss: #858b93;
+  --og-j-cb-bg: #fff6b8; --og-j-br-bg: #ffe2c2; --og-j-hit-bg: #d4f7fb; --og-j-miss-bg: #ebedf0;
+  --og-num: "Chakra Petch", "Figtree", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --og-bas: #4fcf83; --og-adv: #f2b23c; --og-exc: #ff6a80; --og-mas: #b67cff; --og-lnt: #e8e5f6; --og-lnt-ink: #17151f;
+    --og-gold: #e7c14f; --og-pink: #ff69ad; --og-blue: #62b8ff; --og-green: #53d690; --og-orange: #ffa94d; --og-red: #ff7586;
+    --og-j-cb: #f8f008; --og-j-br: #f0983a; --og-j-hit: #58e8f8; --og-j-miss: #c8c8c8; --og-j-cb-bg: #3a3608; --og-j-br-bg: #3d2610; --og-j-hit-bg: #0f3338; --og-j-miss-bg: #2c2c31;
+  }
+}
+:root[data-theme="dark"] {
+  --og-bas: #4fcf83; --og-adv: #f2b23c; --og-exc: #ff6a80; --og-mas: #b67cff; --og-lnt: #e8e5f6; --og-lnt-ink: #17151f;
+  --og-gold: #e7c14f; --og-pink: #ff69ad; --og-blue: #62b8ff; --og-green: #53d690; --og-orange: #ffa94d; --og-red: #ff7586;
+    --og-j-cb: #f8f008; --og-j-br: #f0983a; --og-j-hit: #58e8f8; --og-j-miss: #c8c8c8; --og-j-cb-bg: #3a3608; --og-j-br-bg: #3d2610; --og-j-hit-bg: #0f3338; --og-j-miss-bg: #2c2c31;
+}
+body { background: var(--color-background-body, #f6f6f7); }
+.og-app {
+  --font-family-body: "Figtree", "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+  --font-family-heading: "Figtree", "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+  font-family: var(--font-family-body);
+  background: var(--color-background-body);
+  color: var(--color-text-primary);
+  min-height: 100vh;
+}
+.og-wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.og-main { padding-block: 20px 64px; display: flex; flex-direction: column; gap: 16px; }
+.og-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.og-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; }
+.og-gap-sm { gap: 4px 8px; }
+.og-space { justify-content: space-between; }
+.og-pad-top { padding-top: 12px; }
+.og-pad-y { padding-block: 12px; }
+.og-num { font-family: var(--og-num); font-variant-numeric: tabular-nums; }
+.og-strong { font-weight: 700; }
+.og-nowrap { white-space: nowrap; }
+.og-muted { color: var(--color-text-secondary); }
+.og-ok { color: var(--og-green); font-weight: 700; font-size: 13px; }
+.og-warn { color: var(--og-orange); font-weight: 700; font-size: 13px; }
+.og-empty { padding: 32px 16px; text-align: center; color: var(--color-text-secondary); }
+
+/* ヘッダー */
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--color-background-surface); }
+.og-top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--color-background-surface); border-bottom: 1px solid var(--color-border); }
+.og-top-inner { display: flex; align-items: center; gap: 12px; padding-block: 12px 4px; flex-wrap: wrap; }
+.og-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.og-logo { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: var(--og-pink); color: #fff; font-weight: 700; font-size: 14px; flex: none; }
+.og-sample { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 99px; background: var(--color-warning-muted); color: var(--color-on-warning-muted); }
+.og-who { margin-left: auto; display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.og-who-name { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.og-who-rating { font-weight: 700; font-size: 20px; color: var(--og-pink); }
+
+/* 難易度・ランク・ランプ */
+.og-diff { display: inline-block; min-width: 38px; text-align: center; font-family: var(--og-num); font-weight: 700; font-size: 11px; letter-spacing: .03em; padding: 0 6px; line-height: 20px; border-radius: 5px; color: #fff; }
+.og-diff-BASIC { background: var(--og-bas); } .og-diff-ADVANCED { background: var(--og-adv); } .og-diff-EXPERT { background: var(--og-exc); }
+.og-diff-MASTER { background: var(--og-mas); } .og-diff-LUNATIC { background: var(--og-lnt); color: var(--og-lnt-ink); }
+.og-rank { font-family: var(--og-num); font-weight: 700; font-size: 13px; }
+.og-rank-sssplus, .og-rank-sss { color: var(--og-gold); } .og-rank-ss, .og-rank-s { color: var(--og-blue); }
+.og-ranklamp { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.og-lamps { display: inline-flex; gap: 3px; }
+.og-lamp { font-family: var(--og-num); font-size: 10px; font-weight: 700; padding: 0 5px; line-height: 16px; border-radius: 4px; border: 1px solid currentColor; }
+.og-lamp-FC { color: var(--og-blue); } .og-lamp-AB { color: var(--og-pink); } .og-lamp-ABP { color: var(--og-gold); } .og-lamp-FB { color: var(--og-green); }
+.og-stars { font-family: var(--og-num); font-weight: 700; color: var(--og-gold); white-space: nowrap; }
+.og-rainbow { background: var(--og-rainbow); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.og-mark { font-family: var(--font-family-body); font-size: 10px; font-weight: 700; border-radius: 4px; padding: 0 3px; margin-left: 3px; vertical-align: 1px; border: 1px solid currentColor; }
+.og-mark-calc { color: var(--og-green); } .og-mark-est { color: var(--og-orange); } .og-mark-man { color: var(--og-blue); }
+.og-rate { font-weight: 700; font-size: 14px; }
+.og-new { font-size: 10px; font-weight: 700; color: var(--og-pink); }
+.og-pb { font-size: 10px; font-weight: 700; color: #fff; background: var(--og-pink); border-radius: 4px; padding: 1px 6px; white-space: nowrap; }
+.og-flag { font-size: 10px; color: var(--og-orange); border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; white-space: nowrap; }
+.og-hint { font-size: 12px; color: var(--color-text-secondary); }
+.og-hint b { color: var(--color-text-primary); }
+.og-title-cell { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
+.og-link { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; color: var(--color-text-primary); text-align: start; cursor: pointer; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; }
+.og-link:hover { text-decoration-color: currentColor; color: var(--color-text-accent); }
+.og-link:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 3px; }
+
+/* カード上下の帯 */
+.og-card-head { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-bottom: 1px solid var(--color-border); }
+.og-card-foot { padding: 12px 16px; border-top: 1px solid var(--color-border); }
+.og-filters .og-filter-row { gap: 8px; }
+
+/* レート概要 */
+.og-hero { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 2fr); gap: 24px; align-items: center; }
+.og-big { font-family: var(--og-num); font-weight: 700; font-size: 56px; line-height: 1.05; letter-spacing: -.01em; color: var(--og-pink); }
+.og-hero-sub { display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--color-text-secondary); margin-top: 4px; }
+.og-hero-sub .og-strong { color: var(--color-text-primary); }
+.og-hero-frames { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.og-frame { --c: var(--og-pink); display: flex; flex-direction: column; gap: 4px; text-align: start; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--color-border); background: var(--color-background-surface); cursor: pointer; font: inherit; color: inherit; }
+.og-frame:hover { border-color: var(--c); }
+.og-frame.is-active { border-color: var(--c); box-shadow: inset 0 0 0 1px var(--c); }
+.og-frame-best { --c: var(--og-blue); } .og-frame-platinum { --c: var(--og-gold); }
+.og-frame-name { font-weight: 700; font-size: 13px; display: flex; gap: 6px; align-items: baseline; }
+.og-frame-name small { font-weight: 500; color: var(--color-text-secondary); }
+.og-frame-val { font-weight: 700; font-size: 26px; line-height: 1.1; color: var(--c); }
+.og-frame-meter { height: 4px; border-radius: 2px; background: var(--color-background-muted); overflow: hidden; }
+.og-frame-meter i { display: block; height: 100%; background: var(--c); }
+.og-frame-sub { font-size: 11px; color: var(--color-text-secondary); }
+.og-formula { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; font-size: 13px; line-height: 1.7; }
+.og-formula p { margin: 0; }
+.og-scroll { overflow-x: auto; }
+.og-mini { border-collapse: collapse; font-size: 12px; }
+.og-mini th, .og-mini td { border: 1px solid var(--color-border); padding: 3px 10px; text-align: end; font-family: var(--og-num); white-space: nowrap; }
+.og-mini th { font-family: var(--font-family-body); color: var(--color-text-secondary); font-weight: 500; }
+
+/* プロフィール */
+.og-profile { display: flex; gap: 18px; align-items: center; }
+.og-profile-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.og-trophy { font-size: 12px; padding: 2px 10px; border-radius: 99px; background: var(--color-background-muted); }
+.og-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.og-stat-k { font-size: 11px; color: var(--color-text-secondary); letter-spacing: .04em; }
+.og-stat-v { font-weight: 700; font-size: 22px; line-height: 1.25; }
+.og-stat-v small, .og-dstat-v small { font-size: 12px; font-weight: 500; color: var(--color-text-secondary); font-family: var(--font-family-body); }
+
+/* タイムライン */
+.og-timeline { display: flex; flex-direction: column; margin-top: 8px; }
+.og-ev { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 4px 14px; padding: 10px 0; border-bottom: 1px solid var(--color-border); }
+.og-ev:last-child { border-bottom: 0; }
+.og-ev-when { font-size: 12px; color: var(--color-text-secondary); padding-top: 2px; }
+.og-ev-what { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.og-ev-btn { background: none; border: 0; border-bottom: 1px solid var(--color-border); font: inherit; color: inherit; text-align: start; cursor: pointer; width: 100%; }
+.og-ev-btn:hover { background: var(--color-background-muted); }
+.og-kind { font-size: 11px; color: var(--color-text-secondary); }
+.og-up { color: var(--og-green); font-weight: 700; }
+.og-up-small { color: var(--og-green); font-size: 12px; }
+
+/* 判定内訳 */
+.og-jd { display: inline-flex; flex-wrap: wrap; gap: 2px 12px; font-family: var(--og-num); font-size: 12px; font-variant-numeric: tabular-nums; color: var(--color-text-secondary); }
+.og-jd b { font-weight: 700; color: var(--color-text-primary); }
+.og-cb b, .og-jv.og-cb { color: var(--og-j-cb); } .og-br b, .og-jv.og-br { color: var(--og-j-br); }
+.og-hi b, .og-jv.og-hi { color: var(--og-j-hit); } .og-ms b, .og-jv.og-ms { color: var(--og-j-miss); }
+.og-cb, .og-br, .og-hi, .og-ms { font-weight: 600; }
+.og-jd .og-cb { color: var(--og-j-cb); } .og-jd .og-br { color: var(--og-j-br); } .og-jd .og-hi { color: var(--og-j-hit); } .og-jd .og-ms { color: var(--og-j-miss); }
+.og-jcell.og-jc-cb { background: var(--og-j-cb-bg); } .og-jcell.og-jc-br { background: var(--og-j-br-bg); }
+.og-jcell.og-jc-hit { background: var(--og-j-hit-bg); } .og-jcell.og-jc-miss { background: var(--og-j-miss-bg); }
+.og-breakdown { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.og-jgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.og-jcell { background: var(--color-background-muted); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+.og-jk { font-size: 10px; letter-spacing: .04em; color: var(--color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.og-jv { font-family: var(--og-num); font-weight: 700; font-size: 18px; line-height: 1.25; }
+.og-jv small { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); }
+.og-rates { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--color-text-secondary); }
+.og-rates b { color: var(--color-text-primary); font-family: var(--og-num); }
+
+/* ダイアログ */
+.og-dialog-body { display: flex; flex-direction: column; gap: 18px; padding: 16px 20px 20px; }
+.og-dialog-body section { display: flex; flex-direction: column; gap: 6px; }
+.og-dstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.og-dstat { background: var(--color-background-muted); border-radius: 8px; padding: 8px 12px; }
+.og-dstat-v { font-weight: 700; font-size: 20px; line-height: 1.25; }
+.og-targets { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--color-text-secondary); }
+.og-targets b { color: var(--color-text-primary); }
+.og-const-box { border: 1px solid var(--color-border); border-radius: 10px; padding: 12px 14px; }
+
+/* カード */
+.og-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.og-card { border: 1px solid var(--color-border); border-radius: 10px; overflow: hidden; background: var(--color-background-surface); display: flex; flex-direction: column; }
+.og-card-img { aspect-ratio: 127 / 178; max-width: 100%; position: relative; display: grid; place-items: center; background: var(--color-background-muted); }
+.og-card-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.og-card-ph { font-family: var(--og-num); font-weight: 700; font-size: 26px; opacity: .4; }
+.og-attr-bg-fire { background: color-mix(in srgb, var(--og-exc) 16%, var(--color-background-muted)); }
+.og-attr-bg-aqua { background: color-mix(in srgb, var(--og-blue) 16%, var(--color-background-muted)); }
+.og-attr-bg-leaf { background: color-mix(in srgb, var(--og-bas) 16%, var(--color-background-muted)); }
+.og-card-meta { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; line-height: 1.4; }
+.og-card-name { overflow-wrap: anywhere; }
+.og-attr { font-size: 10px; font-weight: 700; padding: 0 5px; border-radius: 4px; color: #fff; }
+.og-attr-fire { background: var(--og-exc); } .og-attr-aqua { background: var(--og-blue); } .og-attr-leaf { background: var(--og-bas); }
+.og-rar { font-family: var(--og-num); font-weight: 700; font-size: 11px; }
+.og-kaika { font-size: 10px; font-weight: 700; color: var(--og-pink); }
+.og-card-stars { margin-left: auto; color: var(--og-gold); font-size: 11px; }
+
+/* データ取り込み */
+.og-steps { margin: 12px 0 0; padding-left: 22px; display: flex; flex-direction: column; gap: 14px; }
+.og-step-title { font-weight: 700; margin-bottom: 2px; }
+.og-bm { display: inline-block; padding: 8px 16px; border-radius: 8px; background: var(--og-pink); color: #fff; font-weight: 700; text-decoration: none; cursor: grab; }
+.og-code { width: 100%; min-height: 64px; margin-top: 10px; font-family: ui-monospace, monospace; font-size: 11px; border: 1px solid var(--color-border); border-radius: 8px; padding: 8px; background: var(--color-background-muted); color: var(--color-text-secondary); resize: vertical; }
+.og-code-short { min-height: 0; height: 52px; }
+.og-bm-sub { background: var(--color-background-muted); color: var(--color-text-primary); border: 1px solid var(--color-border); }
+.og-howto { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--color-text-secondary); margin-block: 10px 12px; line-height: 1.6; }
+.og-howto b { color: var(--color-text-primary); }
+.og-drop { margin-block: 12px; border: 2px dashed var(--color-border); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--color-text-secondary); }
+.og-drop.is-over { border-color: var(--og-pink); color: var(--color-text-primary); }
+
+/* グラフ */
+.og-chart { width: 100%; height: auto; display: block; margin-top: 8px; }
+.og-chart text { fill: var(--color-text-secondary); font-family: var(--og-num); font-size: 11px; }
+.og-chart .og-grid { stroke: var(--color-border); stroke-width: 1; }
+.og-chart .og-area { fill: var(--og-pink); fill-opacity: .1; }
+.og-chart .og-line { fill: none; stroke: var(--og-pink); stroke-width: 2; }
+.og-chart .og-dot { fill: var(--og-pink); }
+.og-chart .og-dot-last { fill: var(--color-background-surface); stroke: var(--og-pink); stroke-width: 2; }
+
+.og-toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--color-text-primary); color: var(--color-background-surface); padding: 10px 18px; border-radius: 99px; z-index: 1000; font-size: 13px; max-width: calc(100vw - 32px); box-shadow: 0 6px 24px rgba(0,0,0,.2); }
+
+@media (max-width: 760px) {
+  .og-hero { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .og-hero-frames { grid-template-columns: minmax(0, 1fr); }
+  .og-frame { display: grid; grid-template-columns: 1fr auto; align-items: center; }
+  .og-frame-meter, .og-frame-sub { grid-column: 1 / -1; }
+  .og-big { font-size: 44px; }
+  .og-jgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .og-ev { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .og-who-name { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* 画像ジェネレータ */
+.og-image-preview { border: 1px solid var(--color-border); border-radius: 12px; overflow: auto; background: var(--color-background-muted); max-height: 80vh; }
+.og-image-preview img { display: block; width: 100%; height: auto; max-width: 100%; }
