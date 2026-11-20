@@ -2,27 +2,30 @@
 
 オンゲキNET（ongeki-net.com）から自分のデータを取り出して、レーティング枠・全スコア・プレイ履歴・自己ベスト更新履歴・所持カードを表示するツール。
 
+**Web版: https://arupegi.github.io/ongeki-viewer/** （PC・スマホどちらでも開ける。データは開いたブラウザの中にだけ保存される）
+
 ## ファイル
 
 | ファイル | 内容 |
 |---|---|
 | `index.html` | ビューア本体（ビルド済み・1ファイル）。ブラウザで直接開ける |
-| `dist/bookmarklet.txt` | ブックマークレット（ビューアの「データ取り込み」タブからもコピーできる） |
+| `dist/bookmarklet-short.txt` | 短いブックマークレット。実行のたびに Web版の `collector.js` を読み込む |
+| `dist/bookmarklet.txt` | 完全版ブックマークレット（Web版を使わずに動く） |
 | `dist/ongeki-viewer.html` | claude.ai アーティファクト公開用（自動取り込みと画像表示は使えない） |
 | `collector.js` | ブックマークレットのソース |
 | `app/` | ビューアのソース（React 19 + [Astryx](https://github.com/meta/astryx) 0.7.8、Vite で1ファイルにビルド） |
 | `app/src/rating.js` | レーティング計算・定数の逆算 |
-| `build.js` | `node build.js` でブックマークレットとビューアを再生成する（初回は `app` で `npm install`） |
+| `build.js` | `node build.js` でブックマークレットとビューアを再生成する（初回は `app` で `npm install`）。更新は再生成してから push すると GitHub Pages に反映される |
 
 ## 使い方
 
-1. `index.html` を開き、「データ取り込み」タブのボタンをブックマークバーへドラッグする（最初の1回）。
+1. Web版（または `index.html`）を開き、「データ取り込み」タブのブックマークレットを登録する（最初の1回。スマホの登録手順もそのタブにある）。
 2. 「データ取り込み」タブの「オンゲキNETを開く」でオンゲキNETを開き、そのタブでブックマークレットを実行する。
-3. 1分半ほどで、データがビューアに自動で届いて取り込まれる。
+3. データがビューアに自動で届いて取り込まれる。
 
 ビューアを経由せずにオンゲキNETを開いた場合は、従来どおり `ongeki-data-….json` がダウンロードされるので、「データ取り込み」で読み込む。
 
-自動取り込みは、ビューアが開いたタブ（`window.opener`）に `postMessage` で送る仕組み。送る前にビューアへ確認を送り、返事の送信元がローカルファイル（origin が `null`）のときだけデータを渡す。ビューア側も、オンゲキNET（`https://ongeki-net.com`）以外からのメッセージは無視する。
+自動取り込みは、ビューアが開いたタブ（`window.opener`）に `postMessage` で送る仕組み。送る前にビューアへ確認を送り、返事の送信元がローカルファイル（origin が `null`）か Web版（`https://arupegi.github.io`）のときだけデータを渡す。ビューア側も、オンゲキNET（`https://ongeki-net.com`）以外からのメッセージは無視する。
 
 取り込むたびに、プレイ履歴（NETは最新50件まで）・レーティング推移・自己ベスト更新が積み上がって保存される。保存先はブラウザの localStorage なので、ときどき「バックアップ」で控えを取ること。
 
