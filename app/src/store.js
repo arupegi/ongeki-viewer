@@ -95,9 +95,15 @@ function playEvent(p, uid, from, src) {
   };
 }
 
-export function ingest(data) {
-  if (!data || !data.scores || !data.player) throw new Error('オンゲキデータの形式ではありません。');
+export function ingest(input) {
+  if (!input || !input.scores || !input.player) throw new Error('オンゲキデータの形式ではありません。');
   const prev = S.latest;
+  // スコアを一部の難易度しか読まなかった回は、残りの難易度を前回の値から引き継ぐ
+  let data = input;
+  if (Array.isArray(input.scoreDiffs) && prev && prev.scores) {
+    const kept = prev.scores.filter((s) => !input.scoreDiffs.includes(s.diff));
+    data = { ...input, scores: [...input.scores, ...kept], chartCount: prev.chartCount };
+  }
   const at = data.fetchedAt || new Date().toISOString();
   const prevBest = prev ? bestMap(prev.scores) : null;
   const curBest = bestMap(data.scores);
@@ -152,13 +158,13 @@ export function ingest(data) {
     J = Object.fromEntries(Object.entries(all).filter(([k]) => keep.has(k)));
     saveJackets();
   }
-  const { jackets, jacketNames, ...rest } = data; // eslint-disable-line no-unused-vars
+  const { jackets, jacketNames, cardDetails, ...rest } = data; // eslint-disable-line no-unused-vars
   // カードを読まなかった回（前回の取得から日が浅いとき）は、前回のカードを引き継ぐ
   const cards = data.cards || (prev && prev.cards) || [];
   const cardsFetchedAt = data.cards ? at : (prev && (prev.cardsFetchedAt || prev.fetchedAt)) || null;
-  if (data.cards) { S.forceCards = false; S.cardDetailBulk = false; }
+  if (data.cards) { S.forceCards = false; if (!data.cardDetailStopped) S.cardDetailBulk = false; }
   if (data.cardDetails && Object.keys(data.cardDetails).length) { CD = { ...CD, ...data.cardDetails }; saveCardDetails(); }
-  S.latest = Object.assign({}, rest, { scores: data.scores.filter((s) => s.played), chartCount: data.scores.length, cards, cardsFetchedAt });
+  S.latest = Object.assign({}, rest, { scores: data.scores.filter((s) => s.played), chartCount: data.chartCount || data.scores.length, cards, cardsFetchedAt });
   save();
   return { newPlays: newPlays.length, events: events.length };
 }

@@ -40,6 +40,9 @@ export function App() {
         const st = store.getState();
         const known = {
           plays: st.plays.filter((p) => p.detail).map(store.playKey),
+          // 保存済みのプレイ（新しい順に200件）と、前回のスコアの有無。ブックマークレットが読むスコアのページを絞るのに使う
+          allPlays: st.plays.slice(0, 200).map(store.playKey),
+          hasScores: !!(st.latest && st.latest.scores && st.latest.scores.length),
           jackets: Object.keys(store.getJackets()),
           cardsFetchedAt: st.latest ? st.latest.cardsFetchedAt || st.latest.fetchedAt : null,
           forceCards: !!st.forceCards,

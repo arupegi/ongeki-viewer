@@ -12,7 +12,7 @@
   // 速くするのは、読むページ数を減らす方（取得済みの内訳・ジャケット・カードを省く）で行う。
   const CONCURRENCY = 2; // pool() の同時処理数（実際のアクセス間隔は INTERVAL で抑える）
   const GAP = 0;
-  const INTERVAL = 450; // ページを読み始める間隔(ms)
+  const INTERVAL = 350; // ページを読み始める間隔(ms)。以前の安定していた版（350ms待ってから1本ずつ）と同程度
   const IMAGE_INTERVAL = 250; // ジャケット画像を読み始める間隔(ms)
   const CARD_REFRESH_DAYS = 7; // カード一覧を読み直す間隔
   const CARD_DETAIL_LIMIT = 30; // カード一覧を読んだ回に、性能（詳細ページ）を読む枚数
@@ -162,9 +162,11 @@
   }
 
   // ---------- 全曲スコア ----------
-  async function fetchScores() {
-    log('スコア取得（全難易度）', 'score');
-    const lists = await pool(DIFFS, CONCURRENCY, async (df) => {
+  // diffs: 読む難易度名の配列（null なら全難易度）
+  async function fetchScores(diffs) {
+    const targets = diffs ? DIFFS.filter((df) => diffs.includes(df.name)) : DIFFS;
+    log(targets.length ? `スコア取得（${diffs ? targets.map((df) => df.name).join('・') : '全難易度'}）` : 'スコア: 新しいプレイがないため省略', 'score');
+    const lists = await pool(targets, CONCURRENCY, async (df) => {
       const out = [];
       const d = await get(`/record/musicGenre/search/?genre=99&diff=${df.id}`);
       const cont = d.querySelector('.container3') || d.body;
@@ -325,6 +327,7 @@
   }
 
   // ---------- カードの性能（詳細ページ） ----------
+  let cardDetailStopped = false;
   async function fetchCardDetail(idx) {
     const d = await get(`/card/cardDetail/?idx=${encodeURIComponent(idx)}`);
     const det = {};
@@ -366,12 +369,17 @@
     const todo = [...missing, ...changed, ...growing].slice(0, limit);
     const out = {};
     let done = 0;
+    let stopped = false;
     if (!todo.length) return out;
     log(`カード性能: 0/${todo.length}（未取得 ${missing.length}枚）`, 'carddetail');
     const at = new Date().toISOString();
     await pool(todo, CONCURRENCY, async (c) => {
+      if (stopped) return;
       try { out[c.id] = { ...(await fetchCardDetail(c.idx)), stars: c.stars, kaika: c.kaika, chokaika: c.chokaika, at }; }
-      catch (e) { if (/制限/.test(e.message)) throw e; console.warn(e); }
+      catch (e) {
+        if (/制限/.test(e.message)) { stopped = true; cardDetailStopped = true; log(`カード性能: アクセス制限のため ${done}枚で中断（読めた分は取り込みます）`, 'carddetail'); return; }
+        console.warn(e);
+      }
       log(`カード性能: ${++done}/${todo.length}（未取得 ${missing.length}枚）`, 'carddetail');
     });
     return out;
@@ -423,18 +431,20 @@
     for (const s of scores) {
       s.isNew = netNewKeys.has(s.diff + ':' + norm(s.title)) || !s.dateAdded || s.dateAdded >= threshold;
     }
-    return { ok: true, source: DB_URL, matched, total: scores.length, currentVersion: curVersion, newThreshold: threshold };
+    // レート対象曲・次点候補のジャケット（スコアを読まなかった難易度の曲も含めるため、曲名から otoge-db で引く）
+    const rtJacketUrls = new Set();
+    Object.values(ratingTarget).flat().forEach((e) => {
+      (byTitle.get(norm(e.title)) || []).filter((m) => (e.diff === 'LUNATIC') === (m.lunatic === '1') && m['lev_' + DK[e.diff]] === e.level)
+        .forEach((m) => { if (m.image_url) rtJacketUrls.add(`${BASE}/img/music/${m.image_url}`); });
+    });
+    return { ok: true, source: DB_URL, matched, total: scores.length, currentVersion: curVersion, newThreshold: threshold, rtJacketUrls: [...rtJacketUrls] };
   }
 
   // ---------- ジャケット画像（画像ジェネレータ用） ----------
   // レート対象曲と次点候補のジャケットを、120px の JPEG に縮めて持っていく（ビューアのページからは直接読めないため）
   // knownJackets: ビューアが既に持っているファイル名。これらは読み直さない
-  async function fetchJackets(scores, ratingTarget, knownJackets) {
-    const keyOf = (s) => s.diff + ':' + s.title;
-    const byKey = new Map();
-    scores.forEach((s) => { if (s.played && s.jacketUrl) { const k = keyOf(s); if (!byKey.has(k)) byKey.set(k, []); byKey.get(k).push(s); } });
-    const urls = new Set();
-    Object.values(ratingTarget).flat().forEach((e) => (byKey.get(keyOf(e)) || []).forEach((s) => urls.add(s.jacketUrl)));
+  async function fetchJackets(urlList, knownJackets) {
+    const urls = new Set(urlList);
     const names = [...urls].map((u) => u.split('/').pop());
     const todo = [...urls].filter((u) => !knownJackets.has(u.split('/').pop()));
     const out = {};
@@ -479,7 +489,7 @@
     const e = await wait;
     if (!e || !VIEWER_ORIGINS.includes(e.origin)) return null;
     const k = e.data.known || {};
-    return { win: op, knownPlays: new Set(k.plays || []), knownJackets: new Set(k.jackets || []), cardsFetchedAt: k.cardsFetchedAt || null, forceCards: !!k.forceCards, cardDetails: k.cardDetails || {}, cardDetailBulk: !!k.cardDetailBulk };
+    return { win: op, knownPlays: new Set(k.plays || []), knownJackets: new Set(k.jackets || []), allPlays: new Set(k.allPlays || []), hasScores: !!k.hasScores, cardsFetchedAt: k.cardsFetchedAt || null, forceCards: !!k.forceCards, cardDetails: k.cardDetails || {}, cardDetailBulk: !!k.cardDetailBulk };
   }
   async function sendToViewer(viewer, data) {
     const wait = waitMessage(viewer, 'ongeki-viewer-received', 15000);
@@ -493,11 +503,25 @@
     // ビューア探しと otoge-db の取得は、NETの読み込みと並行して進める
     const viewerP = findViewer();
     const dbP = fetch(DB_URL, { cache: 'no-cache' }).then((r) => r.json()).catch((e) => { console.warn(e); return null; });
-    // NETのページは get() の同時実行数（CONCURRENCY）の範囲で並行して読む
-    const playlogP = Promise.all([fetchPlaylog(), viewerP]).then(async ([pl, v]) => {
-      await attachPlayDetails(pl, v ? v.knownPlays : new Set());
-      return pl;
+    // NETのページはすべて pageSlot() で間隔をあけて読む（同時に投げても、開始は INTERVAL ごと）
+    const playlogP = fetchPlaylog();
+    const viewerAndPlaylogP = Promise.all([viewerP, playlogP]);
+    // プレイの内訳: ビューアが持っていないプレイだけ
+    const detailsP = viewerAndPlaylogP.then(([v, pl]) => attachPlayDetails(pl, v ? v.knownPlays : new Set()));
+    // スコア: 前回からのプレイに出てきた難易度だけ読む（スコアはプレイしない限り変わらないため）
+    //   ビューアが前回のスコアを持っていない、またはプレイ履歴50件がすべて新しい（取りこぼしがあり得る）ときは全難易度
+    const scoreDiffsP = viewerAndPlaylogP.then(([v, pl]) => {
+      if (!v || !v.hasScores) return null;
+      const fresh = pl.filter((p) => !v.allPlays.has(playKey(p)));
+      if (fresh.length === pl.length) return null;
+      return [...new Set(fresh.map((p) => p.diff).filter(Boolean))];
     });
+    const scoresP = scoreDiffsP.then((diffs) => fetchScores(diffs));
+    const ratingTargetP = fetchRatingTarget();
+    const playerP = fetchPlayer();
+    // ジャケット: 譜面定数の照合が済みしだい、カードの性能を読むのと並行して取る（画像は別の間隔で読む）
+    const constP = Promise.all([scoresP, ratingTargetP]).then(([sc, rt]) => attachConstants(sc, rt, dbP));
+    const jacketsP = Promise.all([constP, viewerP]).then(([ci, v]) => fetchJackets(ci.rtJacketUrls || [], v ? v.knownJackets : new Set()));
     // カード一覧はめったに変わらないので、ビューアが CARD_REFRESH_DAYS 日以内に取得済みなら読まない
     const cardsP = viewerP.then((v) => {
       const age = v && v.cardsFetchedAt ? (Date.now() - Date.parse(v.cardsFetchedAt)) / 86400000 : Infinity;
@@ -509,16 +533,21 @@
         return { cards, cardDetails };
       });
     });
-    const [player, ratingTarget, scores, playlog, { cards, cardDetails }, viewerInfo] = await Promise.all([
-      fetchPlayer(), fetchRatingTarget(), fetchScores(), playlogP, cardsP, viewerP,
+    const [player, ratingTarget, scores, scoreDiffs, playlog, , constInfo, { jackets, jacketNames }, { cards, cardDetails }, viewerInfo] = await Promise.all([
+      playerP, ratingTargetP, scoresP, scoreDiffsP, playlogP, detailsP, constP, jacketsP, cardsP, viewerP,
     ]);
-    const constInfo = await attachConstants(scores, ratingTarget, dbP);
-    const { jackets, jacketNames } = await fetchJackets(scores, ratingTarget, viewerInfo ? viewerInfo.knownJackets : new Set());
-    const data = { format: 'ongeki-viewer/1', fetchedAt: new Date().toISOString(), player, ratingTarget, scores, playlog, cards, cardDetails, constInfo, jackets, jacketNames };
+    delete constInfo.rtJacketUrls;
+    const data = {
+      format: 'ongeki-viewer/1', fetchedAt: new Date().toISOString(), player, ratingTarget,
+      scores, scoreDiffs, // scoreDiffs: 読んだ難易度（null は全難易度）。読まなかった難易度はビューアが前回の値を引き継ぐ
+      playlog, cards, cardDetails, cardDetailStopped, constInfo, jackets, jacketNames,
+    };
     window.__ongekiData = data;
     const sec = ((Date.now() - t0) / 1000).toFixed(1);
     if (window.__ongekiNoDownload) { box.textContent = `取得完了（テストモード・${sec}秒）`; return; }
-    const summary = `スコア ${scores.filter((s) => s.played).length}譜面 / 履歴 ${playlog.length}件 / カード ${cards ? cards.length + '枚' : '前回分を使用'}（${sec}秒）`;
+    const scoreText = scoreDiffs ? (scoreDiffs.length ? `${scoreDiffs.join('・')}を更新` : '変化なし') : `${scores.filter((s) => s.played).length}譜面`;
+    const cardText = cards ? `${cards.length}枚${Object.keys(cardDetails).length ? `（性能 ${Object.keys(cardDetails).length}枚）` : ''}` : '前回分を使用';
+    const summary = `スコア ${scoreText} / 履歴 ${playlog.length}件 / カード ${cardText}（${sec}秒）${cardDetailStopped ? '\n※アクセス制限のため、カード性能は途中までです。10分ほどあけて再実行すると続きを読みます。' : ''}`;
     // このタブをビューアから開いた場合は、ビューアへ直接送る
     if (viewerInfo) {
       log('ビューアへ送信中');
